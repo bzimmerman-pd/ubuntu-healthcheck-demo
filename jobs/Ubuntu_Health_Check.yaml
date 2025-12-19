@@ -1,0 +1,64 @@
+- defaultTab: nodes
+  description: "Ubuntu Health Check via GitHub-synced script"
+  executionEnabled: true
+  group: "demos/ubuntu"
+  loglevel: INFO
+  name: "Ubuntu Health Check"
+  nodeFilterEditable: true
+  scheduleEnabled: true
+  multipleExecutions: false
+  # Filter targets; update as needed (e.g., tags: ubuntu && env:prod)
+  # For a local Runner node:
+  filter: "name: local"
+  options:
+    - name: disk_threshold
+      description: "Root filesystem usage critical threshold (%)"
+      default: "85"
+      required: false
+    - name: ping_host
+      description: "Host/IP to ping for connectivity check"
+      default: "8.8.8.8"
+      required: false
+    - name: services
+      description: "Space-separated systemd services to verify"
+      default: "ssh systemd-journald cron"
+      required: false
+    - name: output_format
+      description: "Output format from script"
+      default: "markdown"
+      values: ["markdown","json","text","both"]
+      required: false
+    - name: interpreter
+      description: "Use bash or python script"
+      default: "bash"
+      values: ["bash","python"]
+      required: false
+  sequence:
+    keepgoing: false
+    strategy: node-first
+    commands:
+      # Step 1: Ensure script is executable (if filesystem preserves mode it’s ok; safe to chmod)
+      - nodeStep: true
+        description: "Ensure script executable"
+        exec: "chmod +x scripts/ubuntu_health_check.sh || true"
+      # Step 2: Run selected interpreter variant
+      - nodeStep: true
+        description: "Run Ubuntu Health Check"
+        exec: >
+          bash -lc '
+          set -e;
+          if [[ "${option.interpreter}" == "python" ]]; then
+            python3 scripts/ubuntu_health_check.py
+              --disk-threshold ${option.disk_threshold}
+              --ping ${option.ping_host}
+              --services "${option.services}"
+              --format json;
+          else
+            scripts/ubuntu_health_check.sh
+              --disk-threshold ${option.disk_threshold}
+              --ping ${option.ping_host}
+              --services "${option.services}"
+              --format ${option.output_format};
+          fi
+          '
+  uuid: "1d2a7c8e-1111-4a22-9a33-abcdefabcdef"
