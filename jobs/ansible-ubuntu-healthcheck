@@ -1,0 +1,59 @@
+---
+- name: Ubuntu Health Check
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    # Options (override with --extra-vars as needed)
+    disk_threshold: "85"              # Root filesystem usage critical threshold (%)
+    ping_host: "8.8.8.8"              # Host/IP to ping for connectivity check
+    services: "ssh systemd-journald cron"  # Space-separated systemd services
+    output_format: "markdown"         # one of: markdown|json|text|both
+    interpreter: "bash"               # one of: bash|python
+
+    # Path to repo root (adjust if scripts are elsewhere)
+    repo_root: "{{ playbook_dir }}"
+
+  tasks:
+    - name: Ensure ubuntu_health_check.sh is executable (safe even if already executable)
+    # Matches Rundeck's chmod step
+      ansible.builtin.file:
+        path: "{{ repo_root }}/scripts/ubuntu_health_check.sh"
+        mode: "0755"
+      ignore_errors: true
+
+    - name: Run Ubuntu Health Check (Python)
+      ansible.builtin.command:
+        cmd: >
+          python3 scripts/ubuntu_health_check.py
+          --disk-threshold {{ disk_threshold }}
+          --ping {{ ping_host }}
+          --services "{{ services }}"
+          --format json
+        chdir: "{{ repo_root }}"
+      register: health_result
+      changed_when: false
+      when: interpreter == "python"
+
+    - name: Run Ubuntu Health Check (Bash)
+      ansible.builtin.command:
+        cmd: >
+          bash scripts/ubuntu_health_check.sh
+          --disk-threshold {{ disk_threshold }}
+          --ping {{ ping_host }}
+          --services "{{ services }}"
+          --format {{ output_format }}
+        chdir: "{{ repo_root }}"
+      register: health_result
+      changed_when: false
+      when: interpreter == "bash"
+
+    - name: Show health check output (stdout)
+      ansible.builtin.debug:
+        msg: "{{ health_result.stdout | default('') }}"
+
+    - name: Show health check errors (stderr) if any
+      ansible.builtin.debug:
+        msg: "{{ health_result.stderr }}"
+      when: health_result.stderr is defined and health_result.stderr | length > 0
