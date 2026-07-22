@@ -1,13 +1,13 @@
 ---
 - name: Ubuntu Health Check
-  hosts: localhost
+  hosts: ec2-107-22-64-51.compute-1.amazonaws.com
   connection: local
   gather_facts: false
 
   vars:
     # Options (override with --extra-vars as needed)
     disk_threshold: "85"              # Root filesystem usage critical threshold (%)
-    ping_host: "8.8.8.8"              # Host/IP to ping for connectivity check
+    ping_host: "http://ec2-107-22-64-51.compute-1.amazonaws.com/"              # Host/IP to ping for connectivity check
     services: "ssh systemd-journald cron"  # Space-separated systemd services
     output_format: "markdown"         # one of: markdown|json|text|both
     interpreter: "bash"               # one of: bash|python
